@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>מגן שמיים - לוחמה אלקטרונית והתקפה</title>
+    <style>
+        :root {
+            --primary: #00d2ff;
+            --accent: #ffeb3b;
+            --danger: #ff4757;
+            --success: #2ed573;
+            --attack: #ff7f50;
+            --ui-bg: rgba(15, 23, 42, 0.95);
+            --sky-top: #020617;
+            --sky-bottom: #1e1b4b;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            user-select: none; 
+            -webkit-user-select: none; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        body {
+            margin: 0; padding: 0; overflow: hidden;
+            background-color: var(--sky-top);
+            font-family: 'Segoe UI', 'Assistant', sans-serif;
+            color: white; touch-action: none;
+        }
+
+        #game-container {
+            position: relative; width: 100vw; height: 100vh;
+            background: var(--sky-top);
+        }
+
+        canvas { position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; }
+
+        .screen {
+            position: absolute; inset: 0; z-index: 100;
+            display: flex; flex-direction: column; align-items: center;
+            backdrop-filter: blur(20px);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .screen-bg-defense { background: linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-bottom) 100%); }
+        .screen-bg-attack { background: linear-gradient(to bottom, #2d3436 0%, #000000 100%); }
+        .screen-bg-main { background: radial-gradient(circle at center, #1e293b 0%, #020617 100%); }
+
+        .hidden { display: none !important; }
+
+        .content-wrapper {
+            width: 100%; max-width: 500px;
+            display: flex; flex-direction: column; align-items: center;
+            padding-bottom: 40px;
+        }
+
+        h1 {
+            font-size: clamp(2.2rem, 8vw, 3rem); margin: 20px 0 10px;
+            background: linear-gradient(to bottom, #fff, var(--primary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
+            text-align: center;
+        }
+        
+        h1.attack-title {
+            background: linear-gradient(to bottom, #fff, var(--attack));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 15px rgba(255, 127, 80, 0.4);
+        }
+
+        .money-display { 
+            font-size: 1.6rem; color: var(--success); font-weight: 800; 
+            margin: 10px 0; background: rgba(0,0,0,0.4);
+            padding: 5px 20px; border-radius: 12px;
+        }
+
+        .mode-btn {
+            width: 100%; max-width: 300px; padding: 25px; margin: 15px 0;
+            font-size: 1.5rem; font-weight: bold; border-radius: 20px;
+            border: 2px solid transparent; color: white; cursor: pointer;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        .mode-btn-defense { background: linear-gradient(135deg, #0f172a, #1e3a8a); border-color: var(--primary); }
+        .mode-btn-attack { background: linear-gradient(135deg, #2d0a0a, #7f1d1d); border-color: var(--attack); }
+        .mode-btn:active { transform: scale(0.95); }
+
+        .shop-btn {
+            background: linear-gradient(135deg, #7b1fa2, #4a148c);
+            border: 2px solid #ea80fc; padding: 15px 40px; font-size: 1.3rem;
+            border-radius: 50px; color: white; cursor: pointer; margin: 20px 0;
+            box-shadow: 0 0 20px rgba(123, 31, 162, 0.5);
+            width: 100%; max-width: 320px;
+        }
+
+        .diff-btn {
+            width: 100%; max-width: 350px; padding: 18px; margin: 8px 0;
+            font-size: 1.2rem; font-weight: bold; border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08);
+            color: white; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .diff-btn:active:not(:disabled) { transform: scale(0.98); background: rgba(255,255,255,0.2); }
+        .locked { opacity: 0.4; cursor: not-allowed; background: #000; }
+
+        #game-hud {
+            pointer-events: none; position: absolute; inset: 0; z-index: 50;
+            display: flex; flex-direction: column;
+        }
+
+        #stats-bar { 
+            display: flex; justify-content: space-between; padding: 10px 15px; 
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent); 
+            align-items: center; pointer-events: auto;
+        }
+        .stat-box { background: var(--ui-bg); padding: 6px 14px; border-radius: 10px; font-weight: bold; font-size: 0.95rem; border: 1px solid rgba(255,255,255,0.1); display: flex; gap: 5px; align-items: center; }
+
+        .error-x { color: var(--danger); font-size: 1.2rem; font-weight: 900; }
+        .error-x.dim { opacity: 0.2; }
+        
+        #timer-display { color: var(--attack); font-size: 1.2rem; min-width: 80px; justify-content: center;}
+
+        .pause-btn {
+            background: var(--ui-bg); border: 2px solid var(--primary);
+            color: white; width: 44px; height: 44px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        #equation-area { 
+            position: absolute; bottom: 180px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; align-items: center; 
+        }
+        #equation {
+            font-size: 2.5rem; font-weight: 800; background: var(--ui-bg); 
+            padding: 10px 40px; border-radius: 20px; border: 3px solid var(--accent); 
+            box-shadow: 0 0 20px rgba(255, 235, 59, 0.4);
+            min-width: 180px; text-align: center; transition: all 0.2s;
+        }
+        
+        .equation-dodge {
+            border-color: var(--danger) !important;
+            box-shadow: 0 0 30px rgba(255, 71, 87, 0.8) !important;
+            color: var(--danger) !important;
+            animation: pulse-eq 0.5s infinite alternate;
+        }
+        @keyframes pulse-eq { from { transform: scale(1); } to { transform: scale(1.1); } }
+
+        #bubbles-container {
+            pointer-events: auto; position: absolute; bottom: 60px; width: 100%; 
+            display: flex; justify-content: space-evenly; 
+        }
+
+        .bubble {
+            background: #f8fafc; color: #0f172a; width: 75px; height: 75px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem; font-weight: 900; cursor: pointer;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.5); border: 3px solid var(--primary);
+            visibility: hidden; transition: transform 0.1s;
+            position: relative;
+        }
+
+        .hint-arrow {
+            position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
+            font-size: 2rem; color: #2ed573; text-shadow: 0 0 10px #2ed573;
+            animation: bounce 0.5s infinite alternate;
+            pointer-events: none;
+        }
+        @keyframes bounce { from { transform: translateX(-50%) translateY(0); } to { transform: translateX(-50%) translateY(-10px); } }
+
+        #top-power-buttons {
+            position: absolute; top: 70px; right: 20px; display: flex; flex-direction: column; gap: 10px; pointer-events: auto; z-index: 60;
+        }
+        .power-btn {
+            width: 56px; height: 56px; border-radius: 50%; border: 3px solid #fff;
+            display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+            cursor: pointer; box-shadow: 0 0 15px rgba(0,0,0,0.3); position: relative;
+        }
+        .power-btn span { position: absolute; bottom: -3px; right: -3px; background: var(--danger); color: white; font-size: 0.7rem; padding: 2px 5px; border-radius: 8px; border: 1px solid white; font-weight: bold; }
+        #ew-button { background: radial-gradient(circle, #00d2ff, #0033ff); box-shadow: 0 0 15px #00d2ff; }
+        #hint-button { background: radial-gradient(circle, #2ed573, #1b5e20); box-shadow: 0 0 15px #2ed573; }
+        
+        #cluster-button { background: radial-gradient(circle, #ffeb3b, #f57f17); box-shadow: 0 0 15px #ffeb3b; border-color: #f57f17; }
+        
+        .power-btn:disabled { opacity: 0.3; filter: grayscale(1); cursor: not-allowed; }
+
+        #alert-overlay, #dodge-overlay {
+            position: absolute; top: 180px; left: 0; width: 100%;
+            z-index: 60; text-align: center; pointer-events: none;
+        }
+        
+        #dodge-overlay { top: 120px; }
+        
+        .alert-text {
+            color: #ff4757; font-size: 1.8rem; font-weight: 900;
+            text-shadow: 0 0 10px rgba(255, 71, 87, 0.6);
+            animation: blink 0.5s infinite alternate;
+        }
+        .dodge-text {
+            color: #ff4757; font-size: 2.5rem; font-weight: 900;
+            text-shadow: 0 0 20px rgba(255, 71, 87, 1);
+            animation: blink-fast 0.25s infinite alternate;
+            background: rgba(0,0,0,0.5); padding: 10px;
+        }
+        @keyframes blink { from { opacity: 1; transform: scale(1); } to { opacity: 0.3; transform: scale(1.05); } }
+        @keyframes blink-fast { from { opacity: 1; transform: scale(1); } to { opacity: 0.5; transform: scale(1.1); } }
+
+        .red-flash {
+            position: absolute; inset: 0; background: rgba(255, 0, 0, 0.3); z-index: 40; pointer-events: none;
+            animation: flash-anim 0.5s infinite alternate;
+        }
+        @keyframes flash-anim { from { opacity: 0.2; } to { opacity: 0.6; } }
+
+        #pause-menu {
+            position: absolute; inset: 0; z-index: 500;
+            background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(8px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .menu-card {
+            background: var(--ui-bg); border: 2px solid var(--primary);
+            padding: 30px; border-radius: 24px; width: 90%; max-width: 320px;
+            display: flex; flex-direction: column; gap: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="red-flash-bg" class="red-flash hidden"></div>
+
+    <div id="alert-overlay" class="hidden">
+        <div id="alert-message" class="alert-text">⚠️ התרעת חירום: חמורה ביותר ⚠️</div>
+    </div>
+    
+    <div id="dodge-overlay" class="hidden">
+        <div id="dodge-message" class="dodge-text">טיל ננעל עליך!<br>התחמק מיד! <span id="dodge-timer"></span></div>
+    </div>
+
+    <!-- MAIN HUB -->
+    <div id="mode-select" class="screen screen-bg-main">
+        <div class="content-wrapper" style="justify-content: center; height: 100%;">
+            <h1 style="font-size: 3.5rem; margin-bottom: 5px;">מגן שמיים</h1>
+            <p style="color: #94a3b8; margin-top: 0; font-size: 1.1rem; margin-bottom: 40px;">בחר מצב פעולה</p>
+            
+            <button class="mode-btn mode-btn-defense" onclick="showScreen('main-menu-defense')">
+                🛡️ מצב הגנה
+                <div style="font-size: 0.9rem; font-weight: normal; margin-top: 8px; color: #cbd5e1;">יירוט טילים המכוונים לעורף</div>
+            </button>
+            
+            <button class="mode-btn mode-btn-attack" onclick="showScreen('main-menu-attack')">
+                ⚔️ מצב התקפה
+                <div style="font-size: 0.9rem; font-weight: normal; margin-top: 8px; color: #cbd5e1;">השמדת משגרים בשטח האויב</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- DEFENSE MENU -->
+    <div id="main-menu-defense" class="screen screen-bg-defense hidden">
+        <div class="content-wrapper">
+            <div style="width:100%; display:flex; justify-content:flex-start;">
+                <button class="stat-box" style="cursor:pointer; margin-bottom: 10px;" onclick="showScreen('mode-select')">← חזור</button>
+            </div>
+            <h1>מצב הגנה</h1>
+            <p style="color: var(--primary); margin-top: 0; font-size: 0.9rem;">מערכת יירוט מתמטית</p>
+            <div id="menu-money-defense" class="money-display">₪0</div>
+            <button class="shop-btn" onclick="showScreen('shop-screen-defense')">🛒 מרכז שדרוגים</button>
+            <p style="align-self: flex-start; margin: 15px 5px 5px; font-size: 0.9rem; font-weight: bold; color: #64748b;">בחר גזרה:</p>
+            <button class="diff-btn" style="border-color: var(--success);" onclick="startGame('jihad', 'defense')"><span>הג'יהאד האסלאמי (עזה)</span> <small>קל מאוד</small></button>
+            <button class="diff-btn" onclick="startGame('hamas', 'defense')"><span>חמאס (עזה)</span> <small>קל</small></button>
+            <button class="diff-btn" onclick="startGame('hezbollah', 'defense')"><span>חיזבאללה (לבנון)</span> <small>בינוני</small></button>
+            <button id="btn-houthis-def" class="diff-btn locked" onclick="startGame('houthis', 'defense')"><span id="txt-houthis-def">חות'ים (תימן) 🔒</span> <small>קשה</small></button>
+            <button id="btn-iran-def" class="diff-btn locked" onclick="startGame('iran', 'defense')"><span id="txt-iran-def">איראן 🔒</span> <small>קיצוני</small></button>
+        </div>
+    </div>
+
+    <!-- ATTACK MENU -->
+    <div id="main-menu-attack" class="screen screen-bg-attack hidden">
+        <div class="content-wrapper">
+            <div style="width:100%; display:flex; justify-content:flex-start;">
+                <button class="stat-box" style="cursor:pointer; margin-bottom: 10px;" onclick="showScreen('mode-select')">← חזור</button>
+            </div>
+            <h1 class="attack-title">מצב התקפה</h1>
+            <p style="color: var(--attack); margin-top: 0; font-size: 0.9rem;">תקיפת יעדים ויכולות שיגור (פי 2 כסף!)</p>
+            <div id="menu-money-attack" class="money-display">₪0</div>
+            <button class="shop-btn" style="background: linear-gradient(135deg, #b91c1c, #7f1d1d); border-color: #ef4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);" onclick="showScreen('shop-screen-attack')">✈️ לוגיסטיקה וחימוש</button>
+            <p style="align-self: flex-start; margin: 15px 5px 5px; font-size: 0.9rem; font-weight: bold; color: #94a3b8;">בחר יעד תקיפה (30 שניות):</p>
+            <button class="diff-btn" style="border-color: var(--success);" onclick="startGame('jihad', 'attack')"><span>הג'יהאד האסלאמי (עזה)</span> <small>ללא התנגדות</small></button>
+            <button class="diff-btn" onclick="startGame('hamas', 'attack')"><span>חמאס (עזה)</span> <small>ללא התנגדות</small></button>
+            <button class="diff-btn" onclick="startGame('hezbollah', 'attack')"><span>חיזבאללה (לבנון)</span> <small>איום נ"מ קל</small></button>
+            <button id="btn-houthis-atk" class="diff-btn locked" onclick="startGame('houthis', 'attack')"><span id="txt-houthis-atk">חות'ים (תימן) 🔒</span> <small>איום נ"מ בינוני</small></button>
+            <button id="btn-iran-atk" class="diff-btn locked" onclick="startGame('iran', 'attack')"><span id="txt-iran-atk">איראן 🔒</span> <small>איום נ"מ כבד</small></button>
+        </div>
+    </div>
+
+    <!-- DEFENSE SHOP -->
+    <div id="shop-screen-defense" class="screen screen-bg-defense hidden">
+        <div class="content-wrapper">
+            <div style="width:100%; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <button class="stat-box" style="cursor:pointer;" onclick="showScreen('main-menu-defense')">← חזרה</button>
+                <h2 style="margin:0;">מעבדת הגנה</h2>
+            </div>
+            <div id="shop-money-defense" class="money-display">₪0</div>
+            <div id="shop-list-defense" style="width:100%;"></div>
+        </div>
+    </div>
+    
+    <!-- ATTACK SHOP -->
+    <div id="shop-screen-attack" class="screen screen-bg-attack hidden">
+        <div class="content-wrapper">
+            <div style="width:100%; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <button class="stat-box" style="cursor:pointer;" onclick="showScreen('main-menu-attack')">← חזרה</button>
+                <h2 style="margin:0; color:var(--attack);">לוגיסטיקה</h2>
+            </div>
+            <div id="shop-money-attack" class="money-display">₪0</div>
+            <div id="shop-list-attack" style="width:100%;"></div>
+        </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="game-hud" class="hidden">
+        <div id="stats-bar">
+            <!-- For Defense -->
+            <div class="stat-box" id="error-display">
+                <span id="err-0" class="error-x dim">X</span>
+                <span id="err-1" class="error-x dim">X</span>
+                <span id="err-2" class="error-x dim">X</span>
+                <span id="err-3" class="error-x dim hidden">X</span>
+                <span id="err-4" class="error-x dim hidden">X</span>
+            </div>
+            <!-- For Attack -->
+            <div class="stat-box hidden" id="timer-display">⏱️ 30.0s</div>
+            
+            <div class="pause-btn" id="pause-trigger">⏸️</div>
+            <div class="stat-box" id="money-info">₪0</div>
+        </div>
+        
+        <div id="top-power-buttons">
+            <button id="ew-button" class="power-btn hidden" onclick="activateEW()">📡</button>
+            <button id="cluster-button" class="power-btn hidden" onclick="activateCluster()">💣</button>
+            <button id="hint-button" class="power-btn hidden" onclick="activateHint()">🛡️ <span id="hint-count">2</span></button>
+        </div>
+
+        <div id="equation-area"><div id="equation">--</div></div>
+        <div id="bubbles-container">
+            <div class="bubble" id="ans3" onclick="onBubbleTap(3)"></div>
+            <div class="bubble" id="ans2" onclick="onBubbleTap(2)"></div>
+            <div class="bubble" id="ans1" onclick="onBubbleTap(1)"></div>
+            <div class="bubble" id="ans0" onclick="onBubbleTap(0)"></div>
+        </div>
+    </div>
+
+    <!-- PAUSE MENU -->
+    <div id="pause-menu" class="hidden">
+        <div class="menu-card">
+            <h2 style="text-align:center; margin-top:0;">המשחק מושהה</h2>
+            <button class="diff-btn" style="background:var(--success); color:black; justify-content:center;" id="resume-btn">המשך</button>
+            <button class="diff-btn" style="justify-content:center;" id="mute-btn">🔊 צלילים: מופעל</button>
+            <button class="diff-btn" style="background:var(--danger); justify-content:center;" onclick="quitToMenu()">יציאה</button>
+        </div>
+    </div>
+
+    <!-- GAME OVER / ROUND END -->
+    <div id="game-over" class="screen hidden" style="justify-content:center; background: rgba(127, 29, 29, 0.4);">
+        <h1 id="over-title" style="color:var(--danger); font-size: 4rem;">חדירה!</h1>
+        <p id="over-reason" style="font-size: 1.5rem; text-align: center;">הטיל פגע במטרה. המשימה נכשלה.</p>
+        <div id="over-stats" style="margin:20px 0; text-align:center; font-size: 1.2rem;"></div>
+        <button id="btn-back-menu" class="shop-btn" onclick="quitToMenu()">חזרה לתפריט</button>
+    </div>
+</div>
+
+<script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let isMuted = false;
+
+    function playSound(type) {
+        if (isMuted) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        if (type === 'siren') {
+            for (let i = 0; i < 5; i++) {
+                const startTime = now + (i * 0.4);
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, startTime);
+                osc.frequency.exponentialRampToValueAtTime(600, startTime + 0.3);
+                gain.gain.setValueAtTime(0.05, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(startTime); osc.stop(startTime + 0.3);
+            }
+        } else if (type === 'dodge-warn') {
+            for (let i = 0; i < 3; i++) {
+                const startTime = now + (i * 0.2);
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(800, startTime);
+                osc.frequency.setValueAtTime(1200, startTime + 0.1);
+                gain.gain.setValueAtTime(0.1, startTime);
+                gain.gain.linearRampToValueAtTime(0, startTime + 0.15);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(startTime); osc.stop(startTime + 0.15);
+            }
+        } else {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            if (type === 'launch') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(100, now);
+                osc.frequency.exponentialRampToValueAtTime(500, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(); osc.stop(now + 0.2);
+            } else if (type === 'hit') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(80, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+                gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.4);
+                osc.start(); osc.stop(now + 0.4);
+            } else if (type === 'fail') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(80, now);
+                gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.4);
+                osc.start(); osc.stop(now + 0.4);
+            } else if (type === 'ew' || type === 'cluster') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(1200, now + 0.8);
+                gain.gain.setValueAtTime(0.4, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+                osc.start(); osc.stop(now + 1.2);
+            }
+        }
+    }
+
+    let money = parseInt(localStorage.getItem('sky_money_v3')) || 0;
+    let inventory = JSON.parse(localStorage.getItem('sky_inv_v3')) || ['aa'];
+
+    function syncStorage() {
+        localStorage.setItem('sky_money_v3', money);
+        localStorage.setItem('sky_inv_v3', JSON.stringify(inventory));
+    }
+
+    const items = [
+        {id:'aa', name:'נ"מ בסיסי', desc:'מערכת וולקן מיושנת.', price:0, mode:'defense'},
+        {id:'ew', name:'לוחמה אלקטרונית (ל"א)', desc:'פעימה אלקטרומגנטית חד-פעמית המשמידה את כל הטילים במסך.', price:6500, mode:'defense'},
+        {id:'hint', name:'פיקוד העורף פרו', desc:'מגלה את התשובה הנכונה עם חץ ירוק. 2 שימושים בסיבוב.', price:5000, mode:'defense'},
+        {id:'irondome', name:'כיפת ברזל', desc:'יירוט מהיר לטווח קצר.', price:3500, mode:'defense'},
+        {id:'ironbeam', name:'מגן אור (לייזר)', desc:'יירוט מיידי במהירות האור.', price:8500, mode:'defense'},
+        {id:'patriot', name:'יהלום (פטריוט)', desc:'נגד איומים רחוקים (חות\'ים/איראן).', price:10000, mode:'defense'},
+        {id:'davidsling', name:'קלע דוד', desc:'מהיר ב-50% מהפטריוט (חות\'ים/איראן).', price:12000, mode:'defense'},
+        {id:'arrow2', name:'חץ 2', desc:'מעניק חיים נוספים (4 טעויות).', price:15000, mode:'defense'},
+        {id:'arrow3', name:'חץ 3', desc:'מעניק 2 חיים נוספים (5 טעויות). דורש חץ 2.', price:17500, requires: 'arrow2', mode:'defense'},
+        
+        {id:'refuel', name:'תדלוק אווירי', desc:'מאפשר גישה למטרות רחוקות במצב התקפה (תימן ואיראן).', price:8000, mode:'attack'},
+        {id:'cluster_bomb', name:'פצצת מצרר', desc:'השמד את כל המשגרים במסך בבת אחת (רבע רווח על כל משגר). חד פעמי בסיבוב.', price:15000, mode:'attack'},
+        {id:'glide_bomb', name:'פצצת גלישה', desc:'השמד 2 משגרים בכל תרגיל שאתה פותר במקום 1.', price:15000, mode:'attack'}
+    ];
+
+    const modes = {
+        'jihad': { reward: 80, count: 5, speed: 0.75, attackDodges: 0, dodgeTime: 0, maxLaunchers: 1 },
+        'hamas': { reward: 120, count: 6, speed: 1.0, attackDodges: 0, dodgeTime: 0, maxLaunchers: 2 },
+        'hezbollah': { reward: 180, count: 7, speed: 1.3, attackDodges: 1, dodgeTime: 7.5, maxLaunchers: 2 },
+        'houthis': { reward: 280, count: 6, speed: 1.7, attackDodges: 2, dodgeTime: 7.5, maxLaunchers: 3 },
+        'iran': { reward: 750, count: 8, speed: 2.1, attackDodges: 2, dodgeTime: 5.0, maxLaunchers: 4 } 
+    };
+
+    let canvas, ctx, active = false, isPaused = false, currentMode = '', gameType = 'defense';
+    let wave = 1, spawned = 0, total = 0, spawnTimer = 0, errorsCount = 0;
+    let enemies = [], defenders = [], bangs = [], rays = [], city = [], stars = [], moon = null;
+    let target = null, ewPulse = null, ewUsed = false, clusterUsed = false, hintsLeft = 2;
+    let lastT = 0;
+    
+    // Attack Mode Variables
+    let attackTimer = 30.0;
+    let roundMoney = 0;
+    let launchers = [];
+    let dodgeState = { active: false, questionReady: false, timer: 0, maxTime: 0, q: '', ans: 0 };
+    let pendingDodges = [];
+    let bgGrass = false; 
+
+    function init() {
+        canvas = document.getElementById('gameCanvas');
+        ctx = canvas.getContext('2d');
+        window.addEventListener('resize', onResize);
+        onResize();
+        refreshUI();
+        document.getElementById('pause-trigger').onclick = togglePause;
+        document.getElementById('resume-btn').onclick = togglePause;
+        document.getElementById('mute-btn').onclick = () => {
+            isMuted = !isMuted;
+            document.getElementById('mute-btn').innerText = isMuted ? '🔈 צלילים: מושתק' : '🔊 צלילים: מופעל';
+        };
+        showScreen('mode-select');
+    }
+
+    function onResize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        genSky(); 
+    }
+
+    function genSky() {
+        stars = Array.from({length: 60}, () => ({ x: Math.random()*canvas.width, y: Math.random()*canvas.height*0.7, r: Math.random()*1.1 }));
+        moon = {
+            x: canvas.width * (Math.random() > 0.5 ? 0.2 : 0.8),
+            y: canvas.height * 0.15,
+            r: 35,
+            craters: Array.from({length: 5}, () => ({
+                ox: (Math.random() - 0.5) * 40, oy: (Math.random() - 0.5) * 40, r: Math.random() * 5 + 2
+            }))
+        };
+        city = []; let curX = 0;
+        while(curX < canvas.width) {
+            let bWidth = 50 + Math.random()*50;
+            let bHeight = 70 + Math.random()*150;
+            let wins = [];
+            for(let r=0; r<Math.floor(bHeight/12)-2; r++) {
+                for(let c=0; c<Math.floor(bWidth/10)-1; c++) {
+                    if(Math.random()>0.3) wins.push({x: 6+c*10, y: 10+r*12, on: Math.random()>0.4});
+                }
+            }
+            city.push({x: curX, w: bWidth, h: bHeight, wins, antenna: Math.random()>0.7});
+            curX += bWidth + 6;
+        }
+    }
+
+    function togglePause() {
+        if (!active) return;
+        isPaused = !isPaused;
+        document.getElementById('pause-menu').classList.toggle('hidden', !isPaused);
+    }
+
+    function quitToMenu() {
+        active = false; isPaused = false;
+        enemies = []; defenders = []; bangs = []; rays = []; target = null; ewPulse = null; launchers = [];
+        dodgeState.active = false; dodgeState.questionReady = false;
+        syncStorage(); 
+        document.getElementById('alert-overlay').classList.add('hidden');
+        document.getElementById('dodge-overlay').classList.add('hidden');
+        document.getElementById('red-flash-bg').classList.add('hidden');
+        document.getElementById('pause-menu').classList.add('hidden');
+        document.getElementById('game-hud').classList.add('hidden');
+        document.getElementById('game-over').classList.add('hidden');
+        document.getElementById('equation').classList.remove('equation-dodge');
+        
+        if(gameType === 'defense') showScreen('main-menu-defense');
+        else showScreen('main-menu-attack');
+    }
+
+    function startGame(m, type) {
+        gameType = type;
+        
+        if (gameType === 'defense') {
+            const hasHighRange = inventory.includes('patriot') || inventory.includes('davidsling') || inventory.includes('arrow2') || inventory.includes('arrow3');
+            if ((m === 'houthis' || m === 'iran') && !hasHighRange) return;
+        } else {
+            const hasRefuel = inventory.includes('refuel');
+            if ((m === 'houthis' || m === 'iran') && !hasRefuel) return;
+        }
+        
+        currentMode = m; active = true; isPaused = false; wave = 1; spawned = 0; errorsCount = 0;
+        enemies = []; defenders = []; bangs = []; rays = []; target = null;
+        ewUsed = false; clusterUsed = false; ewPulse = null; hintsLeft = 2;
+        lastT = performance.now();
+        
+        document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+        document.getElementById('game-hud').classList.remove('hidden');
+        document.getElementById('equation').classList.remove('equation-dodge');
+        document.getElementById('red-flash-bg').classList.add('hidden');
+        document.getElementById('dodge-overlay').classList.add('hidden');
+        
+        const ewBtn = document.getElementById('ew-button');
+        const clusterBtn = document.getElementById('cluster-button');
+        const hintBtn = document.getElementById('hint-button');
+        const errDisp = document.getElementById('error-display');
+        const timerDisp = document.getElementById('timer-display');
+        
+        if (gameType === 'defense') {
+            errDisp.classList.remove('hidden');
+            timerDisp.classList.add('hidden');
+            clusterBtn.classList.add('hidden');
+            ewBtn.classList.toggle('hidden', !inventory.includes('ew'));
+            ewBtn.disabled = false;
+            hintBtn.classList.toggle('hidden', !inventory.includes('hint'));
+            document.getElementById('hint-count').innerText = hintsLeft;
+            hintBtn.disabled = false;
+            
+            const err3 = document.getElementById('err-3');
+            const err4 = document.getElementById('err-4');
+            if (inventory.includes('arrow3')) { err3.classList.remove('hidden'); err4.classList.remove('hidden'); }
+            else if (inventory.includes('arrow2')) { err3.classList.remove('hidden'); err4.classList.remove('hidden'); }
+            else { err3.classList.add('hidden'); err4.classList.add('hidden'); }
+            for(let i=0; i<5; i++) document.getElementById('err-'+i).classList.add('dim');
+            
+            newWave();
+        } else {
+            errDisp.classList.add('hidden');
+            timerDisp.classList.remove('hidden');
+            ewBtn.classList.add('hidden');
+            hintBtn.classList.add('hidden');
+            clusterBtn.classList.toggle('hidden', !inventory.includes('cluster_bomb'));
+            clusterBtn.disabled = false;
+            
+            attackTimer = 30.0;
+            roundMoney = 0;
+            launchers = [];
+            dodgeState.active = false;
+            dodgeState.questionReady = false;
+            bgGrass = (currentMode === 'hezbollah' || currentMode === 'hamas' || currentMode === 'jihad');
+            
+            pendingDodges = [];
+            let dodgesCount = modes[currentMode].attackDodges;
+            if (dodgesCount === 1) pendingDodges.push(15);
+            else if (dodgesCount === 2) pendingDodges.push(20, 10);
+            
+            for(let i=0; i < modes[currentMode].maxLaunchers; i++) {
+                setTimeout(() => { if(active && gameType === 'attack') spawnLauncher(); }, i * 1500);
+            }
+            updateHud();
+        }
+        
+        requestAnimationFrame(gameLoop);
+    }
+
+    function activateEW() {
+        if(ewUsed || !active || isPaused || ewPulse || gameType !== 'defense') return;
+        ewUsed = true;
+        document.getElementById('ew-button').disabled = true;
+        playSound('ew');
+        ewPulse = { r: 10, maxR: Math.max(canvas.width, canvas.height) * 1.5, s: 1500 };
+    }
+    
+    function activateCluster() {
+        if(clusterUsed || !active || isPaused || gameType !== 'attack' || dodgeState.active) return;
+        clusterUsed = true;
+        document.getElementById('cluster-button').disabled = true;
+        playSound('cluster');
+        
+        const partialReward = Math.floor(modes[currentMode].reward * 2 * 0.25);
+        
+        launchers.forEach(l => {
+            if(!l.destroyed) {
+                l.destroyed = true;
+                bangs.push({x:l.x, y:l.y, r: 40, t:1.2, particles: Array.from({length:20}, () => ({
+                    x: 0, y: 0, vx: (Math.random()-0.5)*200, vy: (Math.random()-0.5)*200, size: Math.random()*6+4
+                }))});
+                roundMoney += partialReward;
+            }
+        });
+        
+        target = null;
+        pickTarget();
+        updateHud();
+    }
+
+    function activateHint() {
+        if(hintsLeft <= 0 || !active || isPaused || !target || gameType !== 'defense') return;
+        hintsLeft--;
+        document.getElementById('hint-count').innerText = hintsLeft;
+        if(hintsLeft === 0) document.getElementById('hint-button').disabled = true;
+
+        for(let i=0; i<4; i++) {
+            const b = document.getElementById('ans'+i);
+            if(parseInt(b.innerText) === target.ans) {
+                const arrow = document.createElement('div');
+                arrow.className = 'hint-arrow';
+                arrow.innerHTML = '⬇️';
+                b.appendChild(arrow);
+                setTimeout(() => { if(arrow.parentNode) arrow.parentNode.removeChild(arrow); }, 3000);
+            }
+        }
+    }
+
+    function newWave() {
+        spawned = 0; spawnTimer = -1.5; 
+        total = Math.floor(modes[currentMode].count * Math.pow(1.1, wave-1));
+        showAlert("⚠️ התרעת חירום: חמורה ביותר ⚠️", 2000);
+        playSound('siren');
+        updateHud();
+    }
+
+    function showAlert(msg, duration) {
+        const alertBox = document.getElementById('alert-overlay');
+        const alertMsg = document.getElementById('alert-message');
+        alertMsg.innerText = msg;
+        alertBox.classList.remove('hidden');
+        setTimeout(() => { if(active) alertBox.classList.add('hidden'); }, duration);
+    }
+
+    function updateHud() {
+        let dispMoney = gameType === 'defense' ? money : roundMoney;
+        document.getElementById('money-info').innerText = `₪${dispMoney.toLocaleString()}`;
+        
+        if (gameType === 'attack') {
+            document.getElementById('timer-display').innerText = `⏱️ ${Math.max(0, attackTimer).toFixed(1)}s`;
+        }
+
+        let currEq = null;
+        let currAns = null;
+        let currentOptions = null;
+
+        if (gameType === 'attack' && dodgeState.active) {
+            if (dodgeState.questionReady) {
+                currEq = dodgeState.q;
+                currAns = dodgeState.ans;
+                currentOptions = dodgeState.options;
+            } else {
+                currEq = "???"; 
+            }
+        } else if (target) {
+            currEq = target.q;
+            currAns = target.ans;
+            currentOptions = target.options;
+        }
+
+        if(currEq && active) {
+            document.getElementById('equation').innerText = currEq;
+            
+            if (currEq !== "???" && !currentOptions) {
+                let opts = [currAns];
+                let attempts = 0;
+                while(opts.length < 4 && attempts < 100) {
+                    attempts++;
+                    let diff = (Math.random()>0.5?1:-1) * rand(1, 10);
+                    let f = currAns + diff;
+                    if(f >= 0 && !opts.includes(f)) opts.push(f);
+                }
+                while(opts.length < 4) {
+                    let f = rand(0, 100);
+                    if(!opts.includes(f)) opts.push(f);
+                }
+                opts.sort(()=>Math.random()-0.5);
+                currentOptions = opts;
+                
+                if (gameType === 'attack' && dodgeState.active) dodgeState.options = opts;
+                else if (target) target.options = opts;
+            }
+            
+            for(let i=0; i<4; i++) {
+                const b = document.getElementById('ans'+i);
+                if (currentOptions) {
+                    b.innerText = currentOptions[i];
+                    b.style.visibility = 'visible';
+                } else {
+                    b.style.visibility = 'hidden';
+                }
+                
+                if (gameType === 'attack') {
+                    b.style.backgroundColor = '#f8fafc';
+                } else if (b.style.backgroundColor !== 'rgb(255, 71, 87)') {
+                   b.style.backgroundColor = '#f8fafc';
+                }
+                
+                const oldArrow = b.querySelector('.hint-arrow');
+                if(oldArrow) b.removeChild(oldArrow);
+            }
+        } else {
+            document.getElementById('equation').innerText = '--';
+            for(let i=0; i<4; i++) document.getElementById('ans'+i).style.visibility = 'hidden';
+        }
+    }
+
+    function genMathEq() {
+        let a, b, ans, q;
+        if(currentMode==='jihad') { 
+            a = rand(1, 10); b = rand(0, 10); 
+            if(Math.random()>0.5){
+                ans=a+b; q=`${a}+${b}`;
+            } else {
+                let num1 = Math.max(a, b);
+                let num2 = Math.min(a, b);
+                ans=num1-num2; q=`${num1}-${num2}`;
+            } 
+        }
+        else if(currentMode==='hamas') { a=rand(2,15); b=rand(2,15); ans=a+b; q=`${a}+${b}`; }
+        else if(currentMode==='hezbollah') { a=rand(3,11); b=rand(3,11); ans=a*b; q=`${a}×${b}`; }
+        else if(currentMode==='houthis') { a=rand(5,15); b=rand(5,15); ans=a*b; q=`${a}×${b}`; }
+        else if(currentMode==='iran') { a=rand(7,20); b=rand(7,20); ans=a*b; q=`${a}×${b}`; }
+        return {q, ans};
+    }
+
+    function pickTarget() {
+        if (!active || (gameType === 'attack' && dodgeState.active)) return;
+        
+        if (gameType === 'defense') {
+            let lowest = null, maxY = -500;
+            enemies.forEach(e => { if(!e.lock && e.y > maxY) { maxY = e.y; lowest = e; } });
+            target = lowest;
+        } else if (gameType === 'attack') {
+            target = launchers.find(l => !l.destroyed) || null;
+            if(target && !target.q) {
+                let eq = genMathEq();
+                target.q = eq.q;
+                target.ans = eq.ans;
+                target.options = null; 
+            }
+        }
+        updateHud();
+    }
+
+    function destroyLauncher(l) {
+        l.destroyed = true;
+        bangs.push({x:l.x, y:l.y, r: 25, t:1.0, particles: Array.from({length:15}, () => ({
+            x: 0, y: 0, vx: (Math.random()-0.5)*150, vy: (Math.random()-0.5)*150, size: Math.random()*5+3
+        }))});
+        roundMoney += (modes[currentMode].reward * 2);
+    }
+
+    function onBubbleTap(idx) {
+        if(isPaused || !active) return;
+        const b = document.getElementById('ans'+idx);
+        let val = parseInt(b.innerText);
+        
+        if (gameType === 'attack' && dodgeState.active) {
+            if (!dodgeState.questionReady) return; 
+            
+            if (val === dodgeState.ans) {
+                dodgeState.active = false;
+                dodgeState.questionReady = false;
+                document.getElementById('red-flash-bg').classList.add('hidden');
+                document.getElementById('dodge-overlay').classList.add('hidden');
+                document.getElementById('equation').classList.remove('equation-dodge');
+                b.style.backgroundColor = '#f8fafc';
+                playSound('hit'); 
+                pickTarget(); 
+            } else {
+                b.style.backgroundColor = '#ff4757';
+                playSound('fail');
+                gameOverAttack('dodge_fail');
+            }
+            return;
+        }
+
+        if(!target) return;
+
+        if (gameType === 'attack') {
+            if (val === target.ans) {
+                let currentTarget = target;
+                destroyLauncher(currentTarget);
+                
+                if (inventory.includes('glide_bomb')) {
+                    let extra = launchers.find(l => !l.destroyed && l.id !== currentTarget.id);
+                    if (extra) {
+                        destroyLauncher(extra);
+                    }
+                }
+
+                b.style.backgroundColor = '#f8fafc';
+                playSound('hit');
+                target = null;
+                pickTarget();
+                updateHud();
+            } else {
+                b.style.backgroundColor = '#ff4757';
+                playSound('fail');
+                gameOverAttack('wrong_math');
+            }
+        } else {
+            if(val === target.ans) {
+                launch(idx, target); target.lock = true; target = null; pickTarget();
+            } else {
+                playSound('fail'); 
+                b.style.backgroundColor = '#ff4757';
+                setTimeout(() => { if(b) b.style.backgroundColor = '#f8fafc'; }, 300);
+                
+                let maxErrors = 3;
+                if (inventory.includes('arrow3')) maxErrors = 5;
+                else if (inventory.includes('arrow2')) maxErrors = 4;
+
+                if (errorsCount < maxErrors) {
+                    document.getElementById('err-' + errorsCount).classList.remove('dim');
+                    errorsCount++;
+                    if (errorsCount >= maxErrors) gameOverDefense('errors');
+                }
+            }
+        }
+    }
+
+    function spawnLauncher() {
+        if(!active || gameType !== 'attack') return;
+        let side = Math.random() > 0.5 ? 1 : -1;
+        launchers.push({
+            id: Math.random(),
+            x: canvas.width/2 + side * (Math.random() * canvas.width*0.3 + 50),
+            y: Math.random() * (canvas.height*0.4) + canvas.height*0.2,
+            vx: -side * (Math.random() * 45 + 30),
+            vy: (Math.random() - 0.5) * 15,
+            destroyed: false, q: '', ans: 0, options: null, radius: 25,
+            wiggle: Math.random() * Math.PI * 2,
+            trail: []
+        });
+        if(!target) pickTarget();
+    }
+
+    function launch(idx, e) {
+        let weapon = 'aa';
+        const isLongRangeArena = (currentMode === 'houthis' || currentMode === 'iran');
+
+        if (!isLongRangeArena && inventory.includes('ironbeam')) {
+            weapon = 'ironbeam';
+        } else if (isLongRangeArena && inventory.includes('arrow3')) {
+            weapon = 'arrow3';
+        } else if (isLongRangeArena && inventory.includes('arrow2')) {
+            weapon = 'arrow2';
+        } else if (isLongRangeArena && inventory.includes('davidsling')) {
+            weapon = 'davidsling';
+        } else if (isLongRangeArena && inventory.includes('patriot')) {
+            weapon = 'patriot';
+        } else if (inventory.includes('irondome')) {
+            weapon = 'irondome';
+        }
+        
+        const sx = (canvas.width/4)*(3-idx)+(canvas.width/8), sy = canvas.height-45;
+        if(weapon === 'ironbeam') {
+            rays.push({x1:sx, y1:sy, x2:e.x, y2:e.y, t:0.15});
+            playSound('hit'); hit(e);
+        } else {
+            let speed = 1600;
+            if (weapon === 'arrow3') speed = 2640; 
+            else if (weapon === 'davidsling' || weapon === 'arrow2') speed = 2400; 
+            defenders.push({x:sx, y:sy, e, s:speed, d:weapon==='aa'?0.3:0, path:[], type: weapon});
+            playSound('launch');
+        }
+    }
+
+    function hit(e) {
+        money += modes[currentMode].reward;
+        syncStorage(); 
+        bangs.push({x:e.x, y:e.y, r:e.isCluster ? 30 : 15, t:1.0, particles: Array.from({length:12}, () => ({
+            x: 0, y: 0, vx: (Math.random()-0.5)*150, vy: (Math.random()-0.5)*150, size: Math.random()*4+2
+        }))});
+        playSound('hit');
+
+        if(e.isCluster) {
+            for(let i=0; i<4; i++) {
+                let a = rand(2, 9), b = rand(2, 9), ans = a * b;
+                enemies.push({
+                    x: e.x + (i - 1.5) * 40, y: e.y, s: e.s * 1.25,
+                    q: `${a}×${b}`, ans, lock: false, trail: [], isClusterChild: true
+                });
+            }
+        }
+
+        enemies = enemies.filter(i => i !== e);
+        if (target === e) target = null;
+        updateHud();
+    }
+
+    function gameOverDefense(reason) {
+        active = false; syncStorage(); 
+        const screen = document.getElementById('game-over');
+        screen.style.background = 'rgba(127, 29, 29, 0.4)';
+        const title = document.getElementById('over-title');
+        title.style.color = 'var(--danger)';
+        const desc = document.getElementById('over-reason');
+        
+        if (reason === 'errors') { title.innerText = "המערכת קרסה!"; desc.innerText = "יותר מדי טעויות בחישוב. המערכת הושבתה."; }
+        else { title.innerText = "חדירה!"; desc.innerText = "הטיל פגע במטרה. המשימה נכשלה."; }
+        
+        document.getElementById('game-hud').classList.add('hidden');
+        screen.classList.remove('hidden');
+        document.getElementById('over-stats').innerText = `החזקת מעמד ${wave} גלים\nסכום בקופה: ₪${money.toLocaleString()}`;
+    }
+
+    function gameOverAttack(reason) {
+        active = false;
+        document.getElementById('red-flash-bg').classList.add('hidden');
+        document.getElementById('dodge-overlay').classList.add('hidden');
+        document.getElementById('equation').classList.remove('equation-dodge');
+        
+        const screen = document.getElementById('game-over');
+        const title = document.getElementById('over-title');
+        const desc = document.getElementById('over-reason');
+        
+        if (reason === 'win') {
+            screen.style.background = 'rgba(46, 213, 115, 0.4)';
+            title.style.color = 'var(--success)';
+            title.innerText = "משימה הושלמה!";
+            desc.innerText = "זמן התקיפה הסתיים בהצלחה. חזרת לבסיס.";
+            money += roundMoney; 
+            syncStorage();
+        } else {
+            screen.style.background = 'rgba(127, 29, 29, 0.4)';
+            title.style.color = 'var(--danger)';
+            title.innerText = "המטוס הופל!";
+            if(reason === 'wrong_math') desc.innerText = "טעות בחישוב שיגור גרמה לפיצוץ קטלני.";
+            else if (reason === 'out_of_bounds') desc.innerText = "משגר האויב חמק מהשטח והזעיק תגבורת.";
+            else desc.innerText = "לא הצלחת להתחמק מטיל האויב בזמן.";
+            roundMoney = 0; 
+        }
+        
+        document.getElementById('game-hud').classList.add('hidden');
+        screen.classList.remove('hidden');
+        document.getElementById('over-stats').innerText = `הרווחת בגיחה: ₪${roundMoney.toLocaleString()}\nסכום בקופה: ₪${money.toLocaleString()}`;
+    }
+
+    function triggerDodge() {
+        dodgeState.active = true;
+        dodgeState.questionReady = false; 
+        dodgeState.maxTime = modes[currentMode].dodgeTime;
+        dodgeState.timer = dodgeState.maxTime;
+        
+        playSound('dodge-warn');
+        document.getElementById('red-flash-bg').classList.remove('hidden');
+        document.getElementById('dodge-overlay').classList.remove('hidden');
+        document.getElementById('equation').classList.add('equation-dodge');
+        
+        setTimeout(() => {
+            if (active && gameType === 'attack' && dodgeState.active) {
+                let eq = genMathEq();
+                dodgeState.q = eq.q;
+                dodgeState.ans = eq.ans;
+                dodgeState.options = null; 
+                dodgeState.questionReady = true;
+                updateHud();
+            }
+        }, 500);
+
+        updateHud();
+    }
+
+    function updateAttackMode(dt) {
+        if (dodgeState.active) {
+            dodgeState.timer -= dt;
+            document.getElementById('dodge-timer').innerText = dodgeState.timer.toFixed(1) + 's';
+            if (dodgeState.timer <= 0) {
+                gameOverAttack('dodge_timeout');
+            }
+            updateHud();
+            return;
+        }
+
+        attackTimer -= dt;
+        if (attackTimer <= 0) {
+            gameOverAttack('win');
+            return;
+        }
+
+        if (pendingDodges.length > 0 && attackTimer <= pendingDodges[0]) {
+            pendingDodges.shift();
+            triggerDodge();
+            return;
+        }
+
+        if (launchers.filter(l => !l.destroyed).length < modes[currentMode].maxLaunchers) {
+            if (Math.random() < 0.02) spawnLauncher();
+        }
+
+        // Collision Avoidance (Repulsion)
+        const minDist = 80;
+        for (let i = 0; i < launchers.length; i++) {
+            for (let j = i + 1; j < launchers.length; j++) {
+                let l1 = launchers[i], l2 = launchers[j];
+                if (l1.destroyed || l2.destroyed) continue;
+                
+                let dx = l2.x - l1.x;
+                let dy = l2.y - l1.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if (dist < minDist) {
+                    let force = (minDist - dist) / dist * 0.5;
+                    let moveX = dx * force;
+                    let moveY = dy * force;
+                    
+                    l1.x -= moveX;
+                    l1.y -= moveY;
+                    l2.x += moveX;
+                    l2.y += moveY;
+                }
+            }
+        }
+
+        // Physics & Movement
+        for (let l of launchers) {
+            if(!l.destroyed) {
+                l.wiggle += dt * 3;
+                l.x += (l.vx + Math.sin(l.wiggle) * 15) * dt;
+                l.y += (l.vy + Math.cos(l.wiggle * 0.5) * 10) * dt;
+                
+                l.trail.push({ x: l.x, y: l.y, t: 0.6 });
+                l.trail = l.trail.filter(p => (p.t -= dt) > 0);
+
+                if (l.x < -150 || l.x > canvas.width + 150 || l.y < -150 || l.y > canvas.height + 150) {
+                    gameOverAttack('out_of_bounds');
+                    return;
+                }
+            }
+        }
+        
+        launchers = launchers.filter(l => !l.destroyed);
+        if(!target) pickTarget();
+        updateHud();
+    }
+
+    function drawAttackMode() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = bgGrass ? '#3f6212' : '#92400e'; 
+        ctx.fillRect(0,0,canvas.width, canvas.height);
+        
+        ctx.fillStyle = bgGrass ? '#4d7c0f' : '#b45309';
+        for(let i=0; i<40; i++) {
+            let rx = (Math.sin(i*123) * 0.5 + 0.5) * canvas.width;
+            let ry = (Math.cos(i*321) * 0.5 + 0.5) * canvas.height;
+            ctx.beginPath(); ctx.arc(rx, ry, (i%4)+3, 0, 7); ctx.fill();
+        }
+
+        launchers.forEach(l => {
+            if (l.destroyed) return;
+            
+            l.trail.forEach(p => {
+                ctx.fillStyle = bgGrass ? `rgba(163, 163, 163, ${p.t})` : `rgba(180, 83, 9, ${p.t})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 8 * (1 - p.t/0.6) + 4, 0, 7);
+                ctx.fill();
+            });
+
+            ctx.save();
+            ctx.translate(l.x, l.y);
+            ctx.rotate(Math.atan2(l.vy, l.vx));
+            
+            ctx.fillStyle = '#374151'; 
+            ctx.fillRect(-25, -15, 50, 30);
+            
+            ctx.fillStyle = '#1f2937';
+            ctx.fillRect(10, -12, 12, 24);
+            ctx.fillStyle = '#4b5563'; 
+            ctx.fillRect(15, -10, 5, 20);
+            
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-18, -18, 10, 5); ctx.fillRect(5, -18, 10, 5); 
+            ctx.fillRect(-18, 13, 10, 5); ctx.fillRect(5, 13, 10, 5);   
+            
+            ctx.fillStyle = '#4b5563';
+            ctx.fillRect(-22, -10, 25, 20); 
+            
+            ctx.strokeStyle = '#111827';
+            ctx.lineWidth = 1;
+            for(let row = -8; row <= 4; row += 4) {
+                ctx.beginPath();
+                ctx.moveTo(-20, row);
+                ctx.lineTo(2, row);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+            
+            if (l === target && !dodgeState.active) {
+                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3; ctx.setLineDash([10,5]);
+                ctx.beginPath(); ctx.arc(l.x, l.y, 50, 0, 7); ctx.stroke();
+                ctx.setLineDash([]); ctx.lineWidth = 1;
+                
+                ctx.strokeStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.moveTo(l.x - 60, l.y); ctx.lineTo(l.x - 40, l.y);
+                ctx.moveTo(l.x + 60, l.y); ctx.lineTo(l.x + 40, l.y);
+                ctx.moveTo(l.x, l.y - 60); ctx.lineTo(l.x, l.y - 40);
+                ctx.moveTo(l.x, l.y + 60); ctx.lineTo(l.x, l.y + 40);
+                ctx.stroke();
+            }
+        });
+
+        bangs.forEach(b => {
+            let grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 3 * (1-b.t/2));
+            grad.addColorStop(0, `rgba(255, 255, 255, ${b.t})`); grad.addColorStop(0.4, `rgba(255, 100, 0, ${b.t})`); grad.addColorStop(1, `rgba(255, 0, 0, 0)`);
+            ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 4, 0, 7); ctx.fill();
+            b.particles.forEach(p => { ctx.fillStyle = `rgba(255, 255, 255, ${b.t})`; ctx.beginPath(); ctx.arc(b.x + p.x, b.y + p.y, p.size * b.t, 0, 7); ctx.fill(); });
+        });
+    }
+
+    function gameLoop(t) {
+        if(!active) return;
+        if(isPaused) { lastT = t; requestAnimationFrame(gameLoop); return; }
+        let dt = Math.min((t - lastT)/1000, 0.1); lastT = t;
+        
+        if (gameType === 'attack') {
+            updateAttackMode(dt);
+            drawAttackMode();
+        } else {
+            if(ewPulse) {
+                ewPulse.r += ewPulse.s * dt;
+                enemies.forEach(e => {
+                    if(!e.lock) {
+                        let dx = e.x - canvas.width/2, dy = e.y - canvas.height/2;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+                        if(dist < ewPulse.r) {
+                            e.lock = true;
+                            setTimeout(() => { if(active) hit(e); }, 50);
+                        }
+                    }
+                });
+                if(ewPulse.r > ewPulse.maxR) ewPulse = null;
+            }
+
+            spawnTimer += dt;
+            if(spawnTimer > 0) {
+                if(spawned < total && spawnTimer > 1.8) {
+                    let eq = genMathEq();
+                    let isCluster = false;
+                    if(currentMode==='iran') { 
+                        if(Math.random() < 0.2) { isCluster = true; let a=rand(10,25); let b=rand(5,10); eq.ans=a+b; eq.q=`${a}+${b}`; showAlert("יירטו את טיל המצרר!", 2500); }
+                    }
+                    enemies.push({ x: 60 + Math.random()*(canvas.width - 120), y: -50, s: (isCluster ? 35 : (45 + wave*8)) * modes[currentMode].speed, q:eq.q, ans:eq.ans, lock:false, trail: [], isCluster, options: null });
+                    spawned++; spawnTimer = 0;
+                }
+            }
+            if(spawned >= total && enemies.length === 0 && spawnTimer > 1.0) { wave++; newWave(); }
+            enemies.forEach(e => {
+                e.y += e.s * dt;
+                e.trail.push({x: e.x, y: e.y, t: 0.4});
+                e.trail = e.trail.filter(p => (p.t -= dt) > 0);
+                if(e.y > canvas.height - 45) { gameOverDefense('hit'); }
+            });
+            defenders.forEach((d, i) => {
+                if(d.d > 0) { d.d -= dt; return; }
+                if(!enemies.includes(d.e)) { defenders.splice(i, 1); return; }
+                let dx = d.e.x - d.x, dy = d.e.y - d.y, dist = Math.sqrt(dx*dx + dy*dy);
+                if(dist < 25) { hit(d.e); defenders.splice(i, 1); }
+                else { d.x += (dx/dist)*d.s*dt; d.y += (dy/dist)*d.s*dt; d.path.push({x:d.x, y:d.y, t:0.3}); }
+                d.path = d.path.filter(p => (p.t -= dt) > 0);
+            });
+            if(!target && active) pickTarget();
+            drawDefenseMode(); 
+        }
+
+        bangs.forEach(b => {
+            b.t -= dt*1.5;
+            b.particles.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; });
+        });
+        bangs = bangs.filter(b => b.t > 0);
+        rays = rays.filter(r => (r.t -= dt) > 0);
+        requestAnimationFrame(gameLoop);
+    }
+
+    function drawDefenseMode() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle='#fff'; 
+        stars.forEach(s=> { ctx.globalAlpha=0.4 + Math.sin(Date.now()*0.001)*0.2; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill(); });
+        ctx.globalAlpha=1;
+        if(moon) {
+            ctx.save(); ctx.shadowBlur = 20; ctx.shadowColor = 'rgba(255, 255, 255, 0.2)';
+            ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.arc(moon.x, moon.y, moon.r, 0, 7); ctx.fill();
+            ctx.shadowBlur = 0; ctx.fillStyle = '#e2e8f0';
+            moon.craters.forEach(c => { ctx.beginPath(); ctx.arc(moon.x + c.ox, moon.y + c.oy, c.r, 0, 7); ctx.fill(); });
+            ctx.restore();
+        }
+        const groundY = canvas.height - 40;
+        city.forEach(b => {
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(b.x, groundY - b.h, b.w, b.h);
+            if(b.antenna) { ctx.strokeStyle='#334155'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(b.x+b.w/2, groundY-b.h); ctx.lineTo(b.x+b.w/2, groundY-b.h-20); ctx.stroke(); }
+            b.wins.forEach(w => { ctx.fillStyle = w.on ? '#facc15' : '#1e293b'; ctx.fillRect(b.x+w.x, groundY-b.h+w.y, 4, 5); });
+        });
+        ctx.fillStyle='#020617'; ctx.fillRect(0, groundY, canvas.width, 40);
+        if(ewPulse) {
+            ctx.save(); ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, ewPulse.r, 0, Math.PI*2);
+            ctx.strokeStyle = '#00d2ff'; ctx.lineWidth = 15; ctx.globalAlpha = Math.max(0, 1 - (ewPulse.r / ewPulse.maxR));
+            ctx.shadowBlur = 40; ctx.shadowColor = '#00d2ff'; ctx.stroke(); ctx.restore();
+        }
+        enemies.forEach(e => {
+            e.trail.forEach(p => { ctx.fillStyle = `rgba(255, 100, 0, ${p.t * 2})`; ctx.beginPath(); ctx.arc(p.x, p.y - 10, 4 * p.t, 0, 7); ctx.fill(); });
+            ctx.save(); ctx.translate(e.x, e.y); ctx.fillStyle = e.isCluster ? '#4b5563' : (e.isClusterChild ? '#ef4444' : '#94a3b8'); 
+            let scale = e.isCluster ? 2.0 : 1.0; ctx.scale(scale, scale);
+            ctx.fillRect(-4, -15, 8, 25); ctx.fillStyle = '#f43f5e'; ctx.beginPath(); ctx.moveTo(-6, 10); ctx.lineTo(6, 10); ctx.lineTo(0, 22); ctx.fill();
+            ctx.fillStyle = '#475569'; ctx.fillRect(-7, -15, 2, 8); ctx.fillRect(5, -15, 2, 8); ctx.restore();
+            if(e===target) { ctx.strokeStyle='#00d2ff'; ctx.lineWidth = 3; ctx.setLineDash([8,4]); ctx.beginPath(); ctx.arc(e.x, e.y+5, 45 * (e.isCluster?1.5:1), 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1; }
+        });
+        for(let i=0; i<4; i++) {
+            const cx = (canvas.width/4)*i+(canvas.width/8); ctx.fillStyle='#1e293b'; ctx.beginPath(); ctx.roundRect(cx-25, groundY-15, 50, 15, 5); ctx.fill();
+            ctx.fillStyle='#334155'; ctx.save(); ctx.translate(cx, groundY-15); ctx.rotate(-Math.PI/4); ctx.fillRect(-8, -25, 16, 25); ctx.restore();
+        }
+        defenders.forEach(d => {
+            d.path.forEach(p => { ctx.fillStyle = `rgba(0, 210, 255, ${p.t * 3})`; ctx.beginPath(); ctx.arc(p.x, p.y, 5 * p.t, 0, 7); ctx.fill(); });
+            ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(Math.atan2(d.e.y - d.y, d.e.x - d.x) + Math.PI/2);
+            ctx.fillStyle = (d.type === 'arrow2' || d.type === 'arrow3') ? '#fff' : '#f8fafc'; ctx.fillRect(-3, -10, 6, 20);
+            ctx.fillStyle = (d.type === 'arrow2' || d.type === 'arrow3') ? '#ffeb3b' : '#00d2ff'; ctx.beginPath(); ctx.moveTo(-3, -10); ctx.lineTo(3, -10); ctx.lineTo(0, -18); ctx.fill(); ctx.restore();
+        });
+        rays.forEach(r => { ctx.shadowBlur = 15; ctx.shadowColor = '#00d2ff'; ctx.strokeStyle='#fff'; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(r.x1,r.y1); ctx.lineTo(r.x2,r.y2); ctx.stroke(); ctx.strokeStyle='#00d2ff'; ctx.lineWidth=2; ctx.stroke(); ctx.shadowBlur = 0; });
+        bangs.forEach(b => {
+            let grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 3 * (1-b.t/2));
+            grad.addColorStop(0, `rgba(255, 255, 255, ${b.t})`); grad.addColorStop(0.4, `rgba(255, 200, 0, ${b.t})`); grad.addColorStop(1, `rgba(255, 0, 0, 0)`);
+            ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 4, 0, 7); ctx.fill();
+            b.particles.forEach(p => { ctx.fillStyle = `rgba(255, 255, 255, ${b.t})`; ctx.beginPath(); ctx.arc(b.x + p.x, b.y + p.y, p.size * b.t, 0, 7); ctx.fill(); });
+        });
+    }
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+        if(id === 'shop-screen-defense') renderShop('defense');
+        if(id === 'shop-screen-attack') renderShop('attack');
+        refreshUI();
+    }
+
+    function refreshUI() {
+        document.getElementById('menu-money-defense').innerText = `₪${money.toLocaleString()}`;
+        document.getElementById('menu-money-attack').innerText = `₪${money.toLocaleString()}`;
+        document.getElementById('shop-money-defense').innerText = `₪${money.toLocaleString()}`;
+        document.getElementById('shop-money-attack').innerText = `₪${money.toLocaleString()}`;
+        const hasHighRange = inventory.includes('patriot') || inventory.includes('davidsling') || inventory.includes('arrow2') || inventory.includes('arrow3');
+        ['houthis', 'iran'].forEach(id => {
+            const btn = document.getElementById('btn-' + id + '-def'); if (!btn) return;
+            const txt = document.getElementById('txt-' + id + '-def');
+            if (hasHighRange) { btn.classList.remove('locked'); if (id === 'houthis') txt.innerText = "חות'ים (תימן)"; else txt.innerText = "איראן"; }
+            else { btn.classList.add('locked'); if (id === 'houthis') txt.innerText = "חות'ים (תימן) 🔒"; else txt.innerText = "איראן 🔒"; }
+        });
+        const hasRefuel = inventory.includes('refuel');
+        ['houthis', 'iran'].forEach(id => {
+            const btn = document.getElementById('btn-' + id + '-atk'); if (!btn) return;
+            const txt = document.getElementById('txt-' + id + '-atk');
+            if (hasRefuel) { btn.classList.remove('locked'); if (id === 'houthis') txt.innerText = "חות'ים (תימן)"; else txt.innerText = "איראן"; }
+            else { btn.classList.add('locked'); if (id === 'houthis') txt.innerText = "חות'ים (תימן) 🔒"; else txt.innerText = "איראן 🔒"; }
+        });
+    }
+
+    function renderShop(mode) {
+        const list = document.getElementById(`shop-list-${mode}`);
+        list.innerHTML = items.filter(i => i.mode === mode).map(item => {
+            const owned = inventory.includes(item.id);
+            const canAfford = money >= item.price;
+            const requirementMet = !item.requires || inventory.includes(item.requires);
+            let btnText = owned ? 'נרכש ✅' : `קנה: ₪${item.price.toLocaleString()}`;
+            if (!owned && item.requires && !requirementMet) btnText = "דורש שדרוג קודם";
+            let btnStyle = owned ? 'background: rgba(46, 213, 115, 0.2);' : (canAfford && requirementMet ? '' : 'opacity: 0.5;');
+            if (mode === 'attack' && !owned && canAfford && requirementMet) btnStyle = 'background: linear-gradient(135deg, #b91c1c, #7f1d1d); border-color: #ef4444;';
+            return `<div class="diff-btn" style="height:auto; flex-direction:column; align-items:flex-start; background:rgba(255,255,255,0.05); padding:15px; cursor: default;">
+                <div style="color:${mode === 'attack' ? 'var(--attack)' : 'var(--primary)'}; font-size:1.1rem; font-weight:bold;">${item.name}</div>
+                <div style="font-size:0.85rem; opacity:0.8; margin-top:4px;">${item.desc}</div>
+                <button class="diff-btn" style="width:100%; margin-top:12px; padding:10px; justify-content:center; ${btnStyle}" onclick="buy('${item.id}', ${item.price}, '${item.requires || ''}', '${mode}')" ${owned || !canAfford || !requirementMet ? 'disabled' : ''}>${btnText}</button>
+            </div>`;
+        }).join('');
+    }
+
+    function buy(id, cost, requires, mode) {
+        if(money >= cost && !inventory.includes(id)) {
+            if (requires && !inventory.includes(requires)) return;
+            money -= cost; inventory.push(id); syncStorage(); renderShop(mode); refreshUI(); 
+        }
+    }
+
+    function rand(min, max) { return Math.floor(Math.random()*(max-min+1))+min; }
+    init();
+</script>
+</body>
+</html>
