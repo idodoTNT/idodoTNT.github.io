@@ -920,6 +920,7 @@
             let speed = 1600;
             if (weapon === 'arrow3') speed = 2640; 
             else if (weapon === 'davidsling' || weapon === 'arrow2') speed = 2400; 
+            else if (weapon === 'patriot') speed = 1600;
             defenders.push({x:sx, y:sy, e, s:speed, d:weapon==='aa'?0.3:0, path:[], type: weapon});
             playSound('launch');
         }
@@ -1198,10 +1199,26 @@
                 if(spawned < total && spawnTimer > 1.8) {
                     let eq = genMathEq();
                     let isCluster = false;
+                    let isKhorramshahr = false;
+                    
                     if(currentMode==='iran') { 
-                        if(Math.random() < 0.2) { isCluster = true; let a=rand(10,25); let b=rand(5,10); eq.ans=a+b; eq.q=`${a}+${b}`; showAlert("יירטו את טיל המצרר!", 2500); }
+                        let rnd = Math.random();
+                        if(rnd < 0.2) { 
+                            isCluster = true; 
+                            let a=rand(10,25); let b=rand(5,10); eq.ans=a+b; eq.q=`${a}+${b}`; 
+                            showAlert("יירטו את טיל המצרר!", 2500); 
+                        } else if(rnd < 0.4) {
+                            isKhorramshahr = true;
+                            let a=rand(2,15); let b=rand(2,15); eq.ans=a+b; eq.q=`${a}+${b}`; 
+                            showAlert("יירטו את החורמשהר!", 2500);
+                        }
                     }
-                    enemies.push({ x: 60 + Math.random()*(canvas.width - 120), y: -50, s: (isCluster ? 35 : (45 + wave*8)) * modes[currentMode].speed, q:eq.q, ans:eq.ans, lock:false, trail: [], isCluster, options: null });
+                    
+                    let eSpeed = (isCluster ? 35 : (45 + wave*8));
+                    if(isKhorramshahr) eSpeed = (45 + wave*8) * 2.5;
+                    eSpeed *= modes[currentMode].speed;
+
+                    enemies.push({ x: 60 + Math.random()*(canvas.width - 120), y: -50, s: eSpeed, q:eq.q, ans:eq.ans, lock:false, trail: [], isCluster, isKhorramshahr, options: null });
                     spawned++; spawnTimer = 0;
                 }
             }
